@@ -13,7 +13,7 @@ const wms_menu = [
 const WmsHeader = () => {
     return (
         <>
-            <div className="fixed top-16 left-0 right-0 z-10 flex bg-gray-50 dark:bg-[#252731] items-center h-16">
+            <div className="fixed top-0 left-0 right-0 z-10 flex bg-gray-50 dark:bg-[#252731] items-center h-16">
                 <div className="flex w-1/5 justify-start ml-16">
                     <a href="/wms">
                         <img src={logo} alt="logo" className="w-16 h-16"/>

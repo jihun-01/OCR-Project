@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React from 'react';
 
 
 const OutboundResult = () => {
@@ -15,6 +15,7 @@ const OutboundResult = () => {
         <div className="w-full h-36 bg-gray-100 rounded-2xl p-4 shadow-md hover:bg-gray-200 transition flex flex-col  text-2xl items-start justify-start flex-wrap mb-8">
           주소 :
         </div>
+        if 
         <div className="w-full h-64 bg-green-100 rounded-2xl p-4 shadow-md hover:bg-gray-200 transition flex flex-col  text-2xl items-center justify-center mb-8">
           정상적으로 출고가 가능합니다.
         </div>
