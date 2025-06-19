@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import WmsOutboundDetail from "./WmsOutboundDetail";
 
 const mockData = [
   {
     id: "SHP-20240601-001",
-    date: "2025-06-15",
+    orderdate: "2025-06-15",
+    outbounddate: "2025-06-16",
     recipient: "홍길동",
     phone: "010-1234-5678",
+    address: "서울시 강남구 역삼동 123-45, 무슨무슨 건물 101호",
     trackingNumber: "TRACK-001",
     status: "출고 완료",
     items: [
@@ -16,9 +19,11 @@ const mockData = [
   },
   {
     id: "SHP-20240601-002",
-    date: "2025-06-16",
-    recipient: "김영희",
+    orderdate: "2025-06-16",
+    outbounddate: "",
+    recipient: "김수",
     phone: "010-2345-6789",
+    address: "서울시 강남구 역삼동 123-45, 무슨무슨 건물 102호",
     trackingNumber: "",
     status: "주문 접수",
     items: [
@@ -27,9 +32,11 @@ const mockData = [
   },
   {
     id: "SHP-20240601-003",
-    date: "2025-06-17",
-    recipient: "이철수",
+    orderdate: "2025-06-17",
+    outbounddate: "",
+    recipient: "이지현",
     phone: "010-3456-7890",
+    address: "서울시 강남구 역삼동 123-45, 무슨무슨 건물 103호",
     trackingNumber: "",
     status: "출고 준비",
     items: [
@@ -39,9 +46,11 @@ const mockData = [
   },
   {
     id: "SHP-20240601-004",
-    date: "2025-06-18",
-    recipient: "박영희",
+    orderdate: "2025-06-18",
+    outbounddate: "2025-06-19",
+    recipient: "박윤호",
     phone: "010-4567-8901",
+    address: "서울시 강남구 역삼동 123-45, 무슨무슨 건물 104호",
     trackingNumber: "TRACK-002",
     status: "배송 중",
     items: [
@@ -51,9 +60,11 @@ const mockData = [
   },
   {
     id: "SHP-20240601-005",
-    date: "2025-06-19",
-    recipient: "최영희",
+    orderdate: "2025-06-19",
+    outbounddate: "",
+    recipient: "최다영",
     phone: "010-5678-9012",
+    address: "서울시 강남구 역삼동 123-45, 무슨무슨 건물 105호",
     trackingNumber: "",
     status: "취소",
     items: [
@@ -63,10 +74,23 @@ const mockData = [
   },
 ];
 
+const Modal = ({ children, onClose }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+    <div className="relative w-full max-w-4xl mx-auto">
+      <div className="absolute top-0 right-0 mt-4 mr-4">
+        <button onClick={onClose} className="text-3xl text-gray-500 hover:text-gray-800 dark:hover:text-white">&times;</button>
+      </div>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-auto max-h-[90vh]">
+        {children}
+      </div>
+    </div>
+  </div>
+);
 
 const WmsOutboundstate = () => {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("전체");
+  const [selectedId, setSelectedId] = useState(null);
 
   const filteredData = mockData.filter((shipment) => {
     const matchSearch = shipment.id.includes(search) || shipment.recipient.includes(search);
@@ -97,7 +121,6 @@ const WmsOutboundstate = () => {
           <option value="배송 중">배송 중</option>
           <option value="배송 완료">배송 완료</option>
           <option value="취소">취소</option>
-          
         </select>
       </div>
       <div className="overflow-x-auto">
@@ -105,24 +128,31 @@ const WmsOutboundstate = () => {
           <thead className="bg-gray-100">
             <tr>
               <th className="whitespace-nowrap text-left px-4 py-2 border">주문 번호</th>
-              <th className="whitespace-nowrap text-left px-4 py-2 border">출고 일자</th>
-              <th className="whitespace-nowrap text-left px-4 py-2 border">수령인</th>
+              <th className="whitespace-nowrap text-left px-4 py-2 border">주문자</th>
+              <th className="whitespace-nowrap text-left px-4 py-2 border">주문 수량</th>
               <th className="whitespace-nowrap text-left px-4 py-2 border">출고 상태</th>
-              <th className="whitespace-nowrap text-left px-4 py-2 border">항목 수</th>
+              <th className="whitespace-nowrap text-left px-4 py-2 border">운송장 번호</th>
+              <th className="whitespace-nowrap text-left px-4 py-2 border">주문 일시</th>
+              <th className="whitespace-nowrap text-left px-4 py-2 border">출고 일자</th>
             </tr>
           </thead>
           <tbody>
             {filteredData.map((shipment) => (
               <tr key={shipment.id} className="hover:bg-gray-50 dark:text-white">
                 <td className="whitespace-nowrap px-4 py-2 border">
-                  <Link to={`/wms/search/${shipment.id}`} className="text-blue-600 hover:underline">
+                  <button
+                    className="text-blue-600 hover:underline dark:text-blue-400"
+                    onClick={() => setSelectedId(shipment.id)}
+                  >
                     {shipment.id}
-                  </Link>
+                  </button>
                 </td>
-                <td className="whitespace-nowrap px-4 py-2 border">{shipment.date}</td>
                 <td className="whitespace-nowrap px-4 py-2 border">{shipment.recipient}</td>
-                <td className="whitespace-nowrap px-4 py-2 border">{shipment.status}</td>
                 <td className="whitespace-nowrap px-4 py-2 border">{shipment.items.length}</td>
+                <td className="whitespace-nowrap px-4 py-2 border">{shipment.status}</td>
+                <td className="whitespace-nowrap px-4 py-2 border">{shipment.trackingNumber}</td>
+                <td className="whitespace-nowrap px-4 py-2 border">{shipment.orderdate}</td>
+                <td className="whitespace-nowrap px-4 py-2 border">{shipment.outbounddate}</td>
               </tr>
             ))}
             {filteredData.length === 0 && (
@@ -135,6 +165,12 @@ const WmsOutboundstate = () => {
           </tbody>
         </table>
       </div>
+      {/* 모달로 상세 정보 표시 */}
+      {selectedId && (
+        <Modal onClose={() => setSelectedId(null)}>
+          <WmsOutboundDetail id={selectedId} onClose={() => setSelectedId(null)} />
+        </Modal>
+      )}
     </div>
   );
 };
