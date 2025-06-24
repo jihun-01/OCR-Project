@@ -1,0 +1,25 @@
+# Node.js
+node_modules/
+dist/
+build/
+
+# 환경설정 및 민감정보
+.env
+.env.local
+.env.*.local
+
+# 로그 파일
+*.log
+
+# OS 및 IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+
+# 기타
+*.sqlite
+*.db
