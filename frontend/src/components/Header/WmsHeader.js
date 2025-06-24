@@ -8,8 +8,8 @@ const user_profile = "https://cdn.startupful.io/img/main_page/profile1.png";
 
 // 메뉴 리스트
 const wms_menu = [
-    { title: '출고', link: '/wms' },
     { title: '출고 검증', link: '/' },
+    { title: 'WMS', link: '/wms' },
 ];
 
 const WmsHeader = () => {

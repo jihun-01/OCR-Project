@@ -1,5 +1,5 @@
 import React from 'react';
-import {WmsOutboundstate} from './WmsOutboundstate';
+import WmsOutboundstate from './WmsOutboundstate';
 import { Routes, Route } from 'react-router-dom';
 
 

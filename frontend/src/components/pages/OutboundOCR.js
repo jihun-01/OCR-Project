@@ -3,6 +3,22 @@ import qrImage from '../../assets/upload.png';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useOrder } from '../../context/OrderContext';
 
+// API URL 동적 설정 - 현재 접속한 기기의 IP 사용
+const getApiUrl = () => {
+  const hostname = window.location.hostname;
+  const port = 8000;
+  
+  // localhost인 경우 (PC에서 개발 시)
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'https://localhost:8000';
+  }
+  
+  // 실제 IP인 경우 (모바일에서 접속 시)
+  return `https://${hostname}:${port}`;
+};
+
+const API_BASE_URL = getApiUrl();
+
 const OutboundOCR = ({ onImageSelect }) => {
   const fileInputRef = useRef(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -14,7 +30,7 @@ const OutboundOCR = ({ onImageSelect }) => {
   // 서버 상태 확인 함수
   const checkServerStatus = async () => {
     try {
-      const response = await fetch('https://192.168.45.251:8000/health');
+      const response = await fetch(`${API_BASE_URL}/health`);
       const result = await response.json();
       console.log('서버 상태:', result);
     } catch (err) {
@@ -46,10 +62,10 @@ const OutboundOCR = ({ onImageSelect }) => {
       
       setProgress('텍스트 추출 중...');
       
-      console.log('요청 URL:', 'https://192.168.45.251:8000/ocr/delivery');
+      console.log('요청 URL:', `${API_BASE_URL}/ocr/delivery`);
       console.log('FormData 내용:', formData);
       
-      const response = await fetch('https://192.168.45.251:8000/ocr/delivery', {
+      const response = await fetch(`${API_BASE_URL}/ocr/delivery`, {
         method: 'POST',
         body: formData,
       });
