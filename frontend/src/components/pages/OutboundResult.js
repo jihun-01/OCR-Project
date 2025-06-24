@@ -5,7 +5,6 @@ import { Navigate } from 'react-router-dom';
 
 const BACKEND_API_URL = process.env.REACT_APP_BACKEND_API_URL;
 
-
 const OutboundResult = () => {
   const { orderId } = useOrder();
   const location = useLocation();
@@ -18,17 +17,45 @@ const OutboundResult = () => {
 
   // 상태 관리
   const [verificationResult, setVerificationResult] = useState(null);
+  const [orderDetail, setOrderDetail] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // 주문 상세 정보 가져오기
+  const fetchOrderDetail = async () => {
+    try {
+      const response = await fetch(
+        `${BACKEND_API_URL}/orders/${encodeURIComponent(orderId)}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('주문 상세 정보:', result);
+      
+      if (result.success) {
+        setOrderDetail(result.order);
+      } else {
+        console.error('주문 상세 정보 조회 실패:', result.message);
+      }
+
+    } catch (err) {
+      console.error('주문 상세 정보 조회 오류:', err);
+      // 오류가 있어도 계속 진행
+    }
+  };
 
   // 주소 검증 함수
   const verifyAddress = async () => {
     try {
-      setIsLoading(true);
-      setError(null);
-
       const response = await fetch(
         `${BACKEND_API_URL}/orders/${encodeURIComponent(orderId)}/verify-address?ocr_address=${encodeURIComponent(extractedAddress)}`,
         {
@@ -50,15 +77,31 @@ const OutboundResult = () => {
     } catch (err) {
       console.error('주소 검증 오류:', err);
       setError('주소 검증 중 오류가 발생했습니다.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // 컴포넌트 마운트 시 주소 검증 실행
+  // 컴포넌트 마운트 시 데이터 로드
   useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // 주문 상세 정보와 주소 검증을 병렬로 실행
+        await Promise.all([
+          fetchOrderDetail(),
+          verifyAddress()
+        ]);
+      } catch (err) {
+        console.error('데이터 로드 오류:', err);
+        setError('데이터를 불러오는 중 오류가 발생했습니다.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     if (orderId && extractedAddress && extractedAddress !== '주소를 추출할 수 없습니다.') {
-      verifyAddress();
+      loadData();
     } else {
       setIsLoading(false);
       setError('주문번호 또는 주소 정보가 없습니다.');
@@ -155,7 +198,7 @@ const OutboundResult = () => {
         </div>
         
         <div className="w-full h-12 dark:bg-gray-700 dark:text-white bg-gray-100 rounded-2xl p-4 shadow-md hover:bg-gray-200 transition flex flex-col text-base items-start justify-center mb-8">
-          수령인 : {deliveryInfo?.recipient || '정보 없음'}
+          수령인 : {orderDetail?.recipient || '정보 없음'}
         </div>
         
         <div className="w-full h-32 dark:bg-gray-700 dark:text-white bg-gray-100 rounded-2xl p-4 shadow-md hover:bg-gray-200 transition flex flex-col text-base items-start justify-start flex-wrap mb-8">

@@ -150,7 +150,7 @@ const OutboundOCR = ({ onImageSelect }) => {
   return (
     <div className="dark:bg-gray-800 max-w-screen-sm mx-auto flex flex-col min-h-[calc(100vh-56px)] bg-gray-100 px-4 py-8">
       <div className="w-full h-full dark:bg-gray-600 bg-white rounded-2xl shadow-lg p-10 flex flex-col items-center">
-        <div className="dark:text-white text-gray-700 w-full bg-gray-100 rounded-2xl p-4 shadow-md hover:bg-gray-200 transition flex flex-col text-2xl items-center justify-center mb-8">
+        <div className="dark:text-black text-gray-700 w-full bg-gray-100 rounded-2xl p-4 shadow-md hover:bg-gray-200 transition flex flex-col text-2xl items-center justify-center mb-8">
           주문번호 : {decodedText}
         </div>
         

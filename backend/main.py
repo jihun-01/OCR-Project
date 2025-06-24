@@ -58,6 +58,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="OCR API", 
     description="EasyOCR을 사용한 텍스트 추출 API",
+    version="1.0.0",
     lifespan=lifespan
 )
 
@@ -133,27 +134,80 @@ def delivery_preprocessing(image_array):
     """
     운송장 전용 전처리 (인식률 향상을 위해 더 정교한 처리)
     """
-    # 그레이스케일 변환
-    gray = cv2.cvtColor(image_array, cv2.COLOR_RGB2GRAY)
-    
-    # 노이즈 제거 (미디언 블러 - 운송장의 선명한 텍스트를 위해)
-    denoised = cv2.medianBlur(gray, 3)
-    
-    # 대비 향상 (CLAHE - Contrast Limited Adaptive Histogram Equalization)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-    enhanced = clahe.apply(denoised)
-    
-    # 적응형 이진화 (운송장의 다양한 배경을 위해)
-    thresh = cv2.adaptiveThreshold(
-        enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-        cv2.THRESH_BINARY, 31, 15  # 원래 값으로 복원
-    )
-    
-    # 모폴로지 연산으로 텍스트 선명도 향상
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-    processed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-    
-    return cv2.cvtColor(processed, cv2.COLOR_GRAY2RGB)
+    try:
+        # 그레이스케일 변환
+        gray = cv2.cvtColor(image_array, cv2.COLOR_RGB2GRAY)
+        
+        # 노이즈 제거 (미디언 블러 - 운송장의 선명한 텍스트를 위해)
+        denoised = cv2.medianBlur(gray, 3)
+        
+        # 대비 향상 (CLAHE - Contrast Limited Adaptive Histogram Equalization)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        enhanced = clahe.apply(denoised)
+        
+        # 적응형 이진화 (운송장의 다양한 배경을 위해)
+        thresh = cv2.adaptiveThreshold(
+            enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+            cv2.THRESH_BINARY, 31, 15
+        )
+
+        # 모폴로지 연산으로 텍스트 선명도 향상
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+        processed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+        
+        # 회전이 필요한지 더 정확하게 확인
+        try:
+            # HoughLinesP를 사용하여 직선 검출
+            edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+            lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=100, 
+                                  minLineLength=100, maxLineGap=10)
+            
+            if lines is not None and len(lines) > 0:
+                angles = []
+                
+                for line in lines:
+                    x1, y1, x2, y2 = line[0]
+                    if x2 - x1 != 0:  # 수직선이 아닌 경우만
+                        angle = np.arctan2(y2 - y1, x2 - x1) * 180.0 / np.pi
+                        # 각도를 -90~90도 범위로 정규화
+                        if angle > 90:
+                            angle -= 180
+                        elif angle < -90:
+                            angle += 180
+                        angles.append(angle)
+                
+                if angles:
+                    # 중간값(median)을 사용하여 대표 각도 계산
+                    median_angle = np.median(angles)
+                    
+                    # 회전이 필요한지 판단 (5도 이상 기울어진 경우만)
+                    if abs(median_angle) >= 5:
+                        # 회전 변환
+                        (h, w) = image_array.shape[:2]
+                        center = (w // 2, h // 2)
+                        M = cv2.getRotationMatrix2D(center, median_angle, 1.0)
+                        processed = cv2.warpAffine(processed, M, (w, h), 
+                                                 flags=cv2.INTER_CUBIC, 
+                                                 borderMode=cv2.BORDER_REPLICATE)
+                        
+                        logger.info(f"이미지 회전 조정: {median_angle:.2f}도 (검출된 선 {len(lines)}개)")
+                    else:
+                        logger.info(f"회전 불필요: 각도 {median_angle:.2f}도 (임계값 5도 미만)")
+                else:
+                    logger.info("검출된 선이 없어 회전 처리 건너뛰기")
+            else:
+                logger.info("직선을 검출할 수 없어 회전 처리 건너뛰기")
+                    
+        except Exception as e:
+            logger.warning(f"이미지 정렬 처리 중 오류: {e}")
+            # 오류 발생 시 원본 처리된 이미지 사용
+        
+        return cv2.cvtColor(processed, cv2.COLOR_GRAY2RGB)
+        
+    except Exception as e:
+        logger.error(f"이미지 전처리 중 오류: {e}")
+        # 오류 발생 시 원본 이미지 반환
+        return image_array
 
 def clean_address(address_text):
     """
@@ -404,15 +458,16 @@ def extract_complete_address(all_texts, address_candidates):
     
     return complete_address.strip()
 
-@app.get("/")
+@app.get("/", tags=["root"], summary="실행확인", description="OCR API 서버가 실행 중입니다")
 async def root():
+    
     return {"message": "OCR API 서버가 실행 중입니다"}
 
-@app.get("/health")
+@app.get("/health", tags=["root"], summary="상태확인", description="OCR API 서버가 실행 중입니다")
 async def health_check():
     return {"status": "healthy", "reader_loaded": reader is not None}
 
-@app.post("/ocr")
+@app.post("/ocr", tags=["ocr"], summary="이미지에서 텍스트를 추출합니다", description="이미지에서 텍스트를 추출합니다")
 async def extract_text(image: UploadFile = File(...)):
     """
     이미지에서 텍스트를 추출합니다.
@@ -432,7 +487,7 @@ async def extract_text(image: UploadFile = File(...)):
         
         # RGB로 변환 (RGBA나 다른 모드일 경우)
         if pil_image.mode != 'RGB':
-            pil_image = pil_image.convert('RGB')
+            pil_image = pil_image.convert('RGB')    
         
         # numpy 배열로 변환
         image_array = np.array(pil_image)
@@ -473,7 +528,7 @@ async def extract_text(image: UploadFile = File(...)):
         logger.error(f"OCR 처리 중 오류: {str(e)}")
         raise HTTPException(status_code=500, detail=f"OCR 처리 실패: {str(e)}")
 
-@app.post("/ocr/delivery")
+@app.post("/ocr/delivery", tags=["ocr"], summary="운송장에서 특정 정보를 추출합니다", description="운송장에서 특정 정보를 추출합니다")
 async def extract_delivery_info(image: UploadFile = File(...)):
     """
     운송장에서 특정 정보를 추출합니다.
@@ -669,7 +724,7 @@ def calculate_similarity(str1, str2):
     from difflib import SequenceMatcher
     return SequenceMatcher(None, str1, str2).ratio()
 
-@app.get("/orders/{order_id}/verify-address")
+@app.get("/orders/{order_id}/verify-address", tags=["ocr"], summary="주문번호의 주소와 OCR 주소를 비교하여 검증", description="주문번호의 주소와 OCR 주소를 비교하여 검증")
 async def verify_address(order_id: str, ocr_address: str, db: Session = Depends(get_db)):
     """주문번호의 주소와 OCR 주소를 비교하여 검증"""
     try:
@@ -749,7 +804,7 @@ async def verify_address(order_id: str, ocr_address: str, db: Session = Depends(
             "message": f"주소 검증 중 오류가 발생했습니다: {str(e)}"
         }
 
-@app.patch("/orders/{order_id}/outbound")
+@app.patch("/orders/{order_id}/outbound", tags=["ocr"], summary="출고 처리 - OCR로 인식된 운송장 번호 업데이트", description="출고 처리 - OCR로 인식된 운송장 번호 업데이트")
 async def outbound_order(order_id: str, tracking_number: str = None, db: Session = Depends(get_db)):
     """출고 처리 - OCR로 인식된 운송장 번호 업데이트"""
     try:
@@ -801,7 +856,7 @@ async def outbound_order(order_id: str, tracking_number: str = None, db: Session
         }
 
 # 주문 목록 조회 API 추가
-@app.get("/orders")
+@app.get("/orders", tags=["WMS"], summary="주문 목록 조회", description="주문 목록 조회")
 async def get_orders(
     status: Optional[str] = None,
     search: Optional[str] = None,
@@ -858,7 +913,7 @@ async def get_orders(
         }
 
 # 특정 주문 상세 조회 API 추가
-@app.get("/orders/{order_id}")
+@app.get("/orders/{order_id}", tags=["WMS"], summary="특정 주문 상세 조회", description="특정 주문 상세 조회")
 async def get_order_detail(order_id: str, db: Session = Depends(get_db)):
     """특정 주문 상세 조회"""
     try:

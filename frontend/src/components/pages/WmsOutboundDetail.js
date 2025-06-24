@@ -194,8 +194,8 @@ const WmsOutboundDetail = ({ id: propId, order: propOrder, onClose, onUpdate }) 
                   <span className="dark:text-white">{order.phone}</span>
                 </div>
                 <div className="flex justify-between items-start">
-                  <span className="dark:text-white font-semibold text-gray-700">주소:</span>
-                  <span className="dark:text-white text-right max-w-xs">{order.address}</span>
+                  <span className="dark:text-white font-semibold text-gray-700 text-nowrap">주소:</span>
+                  <span className="dark:text-white text-right max-w-xs whitespace-break-spaces">{order.address}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="dark:text-white font-semibold text-gray-700">운송장 번호:</span>
